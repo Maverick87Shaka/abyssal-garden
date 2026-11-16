@@ -497,7 +497,7 @@ struct GO { @builtin(position) cp: vec4f, @location(0) uv: vec2f, @location(1) @
 }
 `;
 
-// ---------------------------------------------------------------- fish + mantas
+// ---------------------------------------------------------------- fish + mantas + whale sharks
 const W_ANIM = S_B + /*wgsl*/`
 struct VI { @location(0) p: vec3f, @location(1) n: vec4f, @location(2) a: vec4f, @location(3) b: vec4f };
 struct VO { @builtin(position) cp: vec4f, @location(0) wp: vec3f, @location(1) n: vec3f, @location(2) op: vec3f, @location(3) @interpolate(flat) sd: f32, @location(4) lt: f32 };
@@ -574,6 +574,61 @@ struct VO { @builtin(position) cp: vec4f, @location(0) wp: vec3f, @location(1) n
   c += E * pow(sat(dot(n, normalize(V + L))), 30.) * .5 * (.3 + ca);
   let sky = amb(i.wp, vec3f(0., 1., 0.), vv.g, z);
   c += alb * sky * ca * .45 * (1. - top) + sky * pow(1. - ndv, 3.) * .35;
+  return fin(fog(c, i.wp, z));
+}
+@vertex fn vsWhale(i: VI) -> VO {
+  var o: VO;
+  let t = g.cam.w; let R = i.a.w; let sz = i.b.z;
+  let ta = t * i.b.y + i.b.x;
+  let P = i.a.xyz + vec3f(R * cos(ta), 2. * sin(ta * 2. + i.b.w), R * .75 * sin(ta));
+  let T = normalize(vec3f(-R * sin(ta), 4. * cos(ta * 2. + i.b.w), R * .75 * cos(ta))) * sign(i.b.y);
+  var S = normalize(cross(vec3f(0., 1., 0.), T)); var Up = cross(T, S);
+  let bank = -.1 * sign(i.b.y);
+  let S2 = S * cos(bank) + Up * sin(bank); Up = Up * cos(bank) - S * sin(bank); S = S2;
+  // slow body wave, strongest at the tail (aux); the head stays steady
+  let u = i.n.w; let ph = t * 1.05 + i.b.w * 6.;
+  var l = i.p;
+  let bend = u * u * sin(ph + l.z * 1.6);
+  l.x += bend * .34;
+  l.y += u * sin(ph * .5 + i.b.w * 3.) * .04;
+  let slope = u * u * 1.6 * cos(ph + l.z * 1.6) * .34;
+  let ln = normalize(vec3f(i.n.x - slope * i.n.z, i.n.y, i.n.z + slope * i.n.x));
+  let w = P + (S * l.x + Up * l.y + T * l.z) * sz;
+  o.cp = g.vp * vec4f(w, 1.); o.wp = w; o.n = S * ln.x + Up * ln.y + T * ln.z; o.op = i.p; o.sd = i.b.w;
+  o.lt = shadow1(w);
+  return o;
+}
+@fragment fn fsWhale(i: VO) -> @location(0) vec4f {
+  let dist = length(i.wp - g.cam.xyz);
+  let ca = caus(i.wp, dist);
+  let tx = textureSample(tD, sR, i.op.zy * .7 + i.sd);
+  let n = normalize(i.n + (vec3f(tx.r, 0., tx.g) - vec3f(.5, 0., .5)) * .18);
+  let L = g.sun.xyz; let V = normalize(g.cam.xyz - i.wp);
+  let z = zone(i.wp); let vv = vol(i.wp);
+  let top = ss(-.25, .3, normalize(i.n).y);
+  // pale checkerboard of spots and stripes over a slate back, white belly
+  let q = vec2f(i.op.x * 5.5, i.op.z * 4.2);
+  let cell = floor(q); let f = fract(q) - .5;
+  let ch = cell.x * 13.1 + cell.y * 7.7 + i.sd * 31.;
+  let jit = hs(ch) - .5;
+  let spot = ss(.3, .16, length(f + jit * .35)) * step(.35, hs(ch + 3.7));
+  let stripe = ss(.14, .04, abs(fract(i.op.z * 4.2 + jit * .2) - .5)) * .35;
+  var back = vec3f(.10, .145, .19) * (.75 + .5 * tx.b);
+  back = mix(back, vec3f(.78, .82, .80), sat(spot + stripe) * .85);
+  var belly = vec3f(.72, .76, .76) * (.8 + .3 * tx.b);
+  // gill slits and the wide terminal mouth
+  let gill = ss(.06, .0, abs(abs(i.op.x) - .3)) * ss(.2, .45, i.op.z) * ss(.72, .5, i.op.z) * ss(.3, .8, sin(i.op.z * 150.));
+  belly = mix(belly, vec3f(.10, .13, .16), gill * .8);
+  var alb = mix(belly, back, top);
+  let mouth = ss(.9, 1.02, i.op.z) * ss(.1, -.1, i.op.y);
+  alb = mix(alb, vec3f(.06, .08, .10), mouth * .85);
+  let E = sunE(i.wp.y, z) * i.lt;
+  let ndv = sat(dot(n, V));
+  let fillN = vec3f(n.x, abs(n.y) * .55 + .25, n.z);
+  var c = alb * (E * sat(dot(n, L)) * (.3 + ca) + amb(i.wp, fillN, vv.g, z) * 1.15 + side(i.wp, n, 1., z) * .7);
+  c += E * pow(sat(dot(n, normalize(V + L))), 26.) * .45 * (.3 + ca);
+  let sky = amb(i.wp, vec3f(0., 1., 0.), vv.g, z);
+  c += alb * sky * ca * .4 * (1. - top) + sky * pow(1. - ndv, 3.) * .3;
   return fin(fog(c, i.wp, z));
 }
 `;

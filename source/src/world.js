@@ -363,7 +363,7 @@ function makeWorld(D, T, flyPts, POSES) {
     gm[o] = magAt(x, z) * 255; gm[o + 2] = zoneP(x, z) * 255; gm[o + 3] = sstep(0.42, 0.6, fbm(x * 0.04, 3, z * 0.04, 3)) * 255;
   }
 
-  // --- fish schools + mantas
+  // --- fish schools + mantas + whale sharks
   const fish = [];
   rseed(14);
   const SCH = [[-2, -36, -10, 15, 520, 0.3, 1, 0.945], [8, -30, -70, 22, 420, 0.32, -1], [48, -30, 14, 18, 360, 0.3, 1], [-58, -30, -8, 11, 420, 0.28, -1, 0.3], [8, -36, 84, 16, 320, 0.28, 1],
@@ -371,6 +371,9 @@ function makeWorld(D, T, flyPts, POSES) {
   for (const s of SCH) { const ss = s[7] === undefined ? rnd() : s[7]; for (let i = 0; i < s[4]; i++) fish.push(s[0], s[1], s[2], s[3], rnd(), s[6] * 1.9 / s[3], s[5], ss); }
   const mantas = [];
   for (const m of [[1, -28, 3.5, 14, 3.012, 0.085, 3.6, 0.1], [49, -31, 24.5, 5, 0.029, -0.08, 3.7, 0.4], [0, -14, -80, 34, 0.3, 0.06, 5.2, 0.7], [-50, -18, 20, 26, 5, -0.075, 3.8, 0.55], [10, -16, 86, 26, 2.2, 0.07, 4.4, 0.85], [20, -11, -20, 46, 4.2, -0.045, 5.6, 0.25]]) mantas.push(...m);
+  // a handful of whale sharks, cruising the open water above the canyon, the kelp basin and the wreck
+  const whales = [];
+  for (const w of [[0, -9, -12, 24, 0.9, 0.026, 5.6, 0.15], [4, -20, -86, 32, 3.4, -0.022, 6.4, 0.55], [62, -11, 20, 22, 5, 0.02, 5, 0.8]]) whales.push(...w);
 
   // --- drifting particles
   const snow = new Float32Array(9000 * 4);
@@ -387,7 +390,7 @@ function makeWorld(D, T, flyPts, POSES) {
     for (let c = 0; c < nCells; c++) { const a = L[c]; for (let i = 0; i < a.length; i += 12) { for (let j = 0; j < 12; j++) data[k++] = a[i + j]; lo[c] = min(lo[c], a[i + 1] - 3); hi[c] = max(hi[c], a[i + 1] + 3); } }
     return { data, n, start, lo, hi };
   };
-  return { gy, glints: new Float32Array(glints), chunks: chunks.map(packC), props: props.map(packC), big: pack(big), bigF: pack(big, 2, 1.5), small: pack(small), solids: { data: new Float32Array(sol.data), ranges: sol.ranges }, bubbles: new Float32Array(bubbles), volD, gm, fish: new Float32Array(fish), mantas: new Float32Array(mantas), snow };
+  return { gy, glints: new Float32Array(glints), chunks: chunks.map(packC), props: props.map(packC), big: pack(big), bigF: pack(big, 2, 1.5), small: pack(small), solids: { data: new Float32Array(sol.data), ranges: sol.ranges }, bubbles: new Float32Array(bubbles), volD, gm, fish: new Float32Array(fish), mantas: new Float32Array(mantas), whales: new Float32Array(whales), snow };
 }
 const fract = (x) => x - floor(x);
 
@@ -544,6 +547,45 @@ function meshManta() {
     m.tube([[sx * 0.12, -0.02, 0.48], [sx * 0.135, -0.05, 0.6], [sx * 0.115, -0.09, 0.69], [sx * 0.085, -0.125, 0.74]], (k) => 0.045 * (1 - k / 4.4), 6, true);
     for (let k = n1; k < m.aux.length; k++) m.aux[k] = sx * 0.1;
   }
+  return m;
+}
+// whale shark: nose +z, tail -z, half length = 1; aux = tail coordinate for the swim animation
+function meshWhaleShark() {
+  const m = new Mesh();
+  // blunt wide head, broad back, tapering to a thin caudal peduncle
+  const prof = [[0.26, 0.30, 0.92], [0.37, 0.42, 0.68], [0.40, 0.44, 0.36], [0.37, 0.41, 0.06],
+    [0.30, 0.35, -0.24], [0.22, 0.27, -0.5], [0.13, 0.17, -0.72], [0.07, 0.09, -0.88], [0.045, 0.055, -1.0]];
+  const rings = [];
+  for (const [h, w, z] of prof) {
+    const ring = [];
+    for (let k = 0; k < 16; k++) { const a = k / 16 * TAU; ring.push(m.v(cos(a) * w, sin(a) * h - 0.06 * pow(max(sin(a), 0), 2), z, sstep(-0.25, -1, z))); }
+    rings.push(ring);
+  }
+  for (let i = 0; i < rings.length - 1; i++) for (let k = 0; k < 16; k++) { const k2 = (k + 1) % 16; m.quad(rings[i][k], rings[i + 1][k], rings[i + 1][k2], rings[i][k2]); }
+  // snout and tail tip as single apex vertices, so no sliver triangles at the ends
+  const nose = m.v(0, -0.05, 1.04, 0);
+  for (let k = 0; k < 16; k++) m.tri(rings[0][(k + 1) % 16], rings[0][k], nose);
+  const tip = m.v(0, -0.03, -1.04, 1);
+  const last = rings[rings.length - 1];
+  for (let k = 0; k < 16; k++) m.tri(last[(k + 1) % 16], last[k], tip);
+  // flat triangular fins: base, tip, trailing corner, thickness
+  const fin = (b, t, c, th, aux) => {
+    const u = [t[0] - b[0], t[1] - b[1], t[2] - b[2]], v = [c[0] - b[0], c[1] - b[1], c[2] - b[2]];
+    let n = [u[1] * v[2] - u[2] * v[1], u[2] * v[0] - u[0] * v[2], u[0] * v[1] - u[1] * v[0]];
+    const l = hypot(...n) || 1; n = n.map((x) => x / l * th);
+    const P = [b, t, c], id = [];
+    for (const s of [1, -1]) for (const p of P) id.push(m.v(p[0] + n[0] * s, p[1] + n[1] * s, p[2] + n[2] * s, aux));
+    m.tri(id[0], id[1], id[2]); m.tri(id[5], id[4], id[3]);
+    for (let e = 0; e < 3; e++) { const e2 = (e + 1) % 3; m.quad(id[e], id[e2], id[e2 + 3], id[e + 3]); }
+  };
+  for (const sx of [-1, 1]) {
+    fin([sx * 0.24, -0.12, 0.46], [sx * 0.92, -0.3, 0.0], [sx * 0.26, -0.14, 0.06], 0.035, 0);  // pectoral
+    fin([sx * 0.13, -0.12, -0.5], [sx * 0.4, -0.2, -0.66], [sx * 0.14, -0.13, -0.68], 0.025, 0); // pelvic
+  }
+  fin([0, 0.36, 0.2], [0, 0.68, 0.02], [0, 0.34, -0.16], 0.03, 0);   // first dorsal
+  fin([0, 0.26, -0.36], [0, 0.46, -0.5], [0, 0.24, -0.6], 0.025, 0); // second dorsal
+  fin([0, 0.02, -0.92], [0, 0.5, -1.3], [0, 0.0, -1.12], 0.025, 0.8);  // upper caudal lobe
+  fin([0, -0.02, -0.94], [0, -0.26, -1.22], [0, -0.02, -1.1], 0.02, 0.8); // lower caudal lobe
   return m;
 }
 function meshFish() {
