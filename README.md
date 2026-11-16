@@ -2,8 +2,8 @@
 
 **A dreamy underwater world you can swim through, right in your browser.**
 
-Towering kelp forests, sunbeams pouring through a rippling surface, a sunken ship, manta rays gliding overhead.
-And all of it is made by code: no images, no 3D models, no sound files. The whole world fits in **one 96 KB HTML file**.
+Towering kelp forests, sunbeams pouring through a rippling surface, a sunken ship, manta rays gliding overhead and a few whale sharks cruising by.
+And all of it is made by code: no images, no 3D models, no sound files. The whole world fits in **one 101 KB HTML file**.
 
 ![Kelp forest with a stone whale tail and a manta ray](.github/screenshots/whale-fluke.jpg)
 
@@ -20,7 +20,7 @@ Nothing to install, and it works offline. It needs a browser with **WebGPU**. If
 - **Kelp forests** that sway in the current and sparkle with tiny gold and green specks
 - **Light rays** streaming down from a wavy surface, with shimmering caustics on the sea floor
 - **A sunken wooden ship**, a **giant stone whale tail**, rock arches, canyons and floating boulders
-- **Manta rays**, schools of fish, rising bubbles and drifting particles
+- **Manta rays**, a few **whale sharks** with their spotted backs, schools of fish, rising bubbles and drifting particles
 - **A purple grotto** with glowing magenta ground cover, coral and barrel sponges
 - **A soundscape** made up as you listen: a deep rumble, distant whale calls, soft chimes and bubbles
 
@@ -65,7 +65,7 @@ If loading crashes the tab, or the graphics driver gives up, the page starts aga
 
 - The seabed is sculpted on your graphics card every time the page opens, then decorated with about two million kelp leaves and plants, tens of thousands of rocks, and thousands of sponges, corals and fish.
 - Everything is drawn with **WebGPU** directly. No game engine or 3D library is used.
-- The ship, whale tail, mantas, fish and corals are built from simple mathematical shapes.
+- The ship, whale tail, mantas, whale sharks, fish and corals are built from simple mathematical shapes.
 - The sound is synthesized live with the Web Audio API.
 - It's built to run smoothly: about 180 fps at 2560×1440 on an RTX 5070 Ti. On slower hardware it aims for 60 fps by lowering first the resolution and then how far away plants and rocks are drawn, in small steps. The scene is already running, blurred, behind the start menu, so most of that tuning is done before you dive in. A low-end phone (Samsung Galaxy A16) reaches about 20 fps at 670×372 on Low.
 
@@ -85,7 +85,7 @@ This writes a new `index.html` next to this README. `npm run build:readable` wri
 
 | File | What's inside |
 |---|---|
-| [`source/src/world.js`](source/src/world.js) | The world layout: rock walls, arches, tunnels, kelp forests, sponge gardens, fish schools, mantas, the ship and the whale tail. **A good place to start.** |
+| [`source/src/world.js`](source/src/world.js) | The world layout: rock walls, arches, tunnels, kelp forests, sponge gardens, fish schools, mantas, whale sharks, the ship and the whale tail. **A good place to start.** |
 | [`source/src/shaders.js`](source/src/shaders.js) | The look: water and fog colors, lighting, kelp, rocks, the water surface and light rays (WGSL shader code) |
 | [`source/src/main.js`](source/src/main.js) | The renderer, the camera, the controls, the six viewpoints and the camera path the world is laid out around |
 | [`source/src/audio.js`](source/src/audio.js) | The soundscape |
